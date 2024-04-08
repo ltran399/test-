@@ -1,6 +1,7 @@
 import java.util.HashSet;
 import java.util.Set;
 
+
 public class Map2D {
     private QuadtreeNode root;
 
@@ -32,3 +33,6 @@ public class Map2D {
         }
     }
 }
+
+
+
