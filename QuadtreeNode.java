@@ -1,24 +1,20 @@
-import java.util.HashSet;
-import java.util.Set;
-
-
 public class QuadtreeNode {
     private static final int MAX_CAPACITY = 4;
-    boolean isDivided;
-    int x, y, width, height;
-    Set<Place> places;
-    QuadtreeNode[] children;
+    private boolean isDivided;
+    private int x, y, width, height;
+    private SimplePlaceSet places;
+    private QuadtreeNode[] children;
 
     public QuadtreeNode(int x, int y, int width, int height) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
-        this.places = new HashSet<>();
-        this.isDivided = false;
+        places = new SimplePlaceSet();
+        isDivided = false;
     }
 
-    void subdivide() {
+    public void subdivide() {
         int subWidth = width / 2;
         int subHeight = height / 2;
         children = new QuadtreeNode[4];
@@ -28,17 +24,18 @@ public class QuadtreeNode {
         children[3] = new QuadtreeNode(x + subWidth, y + subHeight, subWidth, subHeight);
         isDivided = true;
 
-        for (Place place : places) {
-            int i = (place.getX() >= x + subWidth ? 1 : 0) + (place.getY() >= y + subHeight ? 2 : 0);
-            children[i].insert(place);
+        for (int i = 0; i < places.size(); i++) {
+            Place place = places.get(i);
+            int idx = (place.getX() >= x + subWidth ? 1 : 0) + (place.getY() >= y + subHeight ? 2 : 0);
+            children[idx].insert(place);
         }
-        places.clear();
+        places = new SimplePlaceSet(); // Clear the original set
     }
 
-    void insert(Place place) {
+    public void insert(Place place) {
         if (isDivided) {
-            int i = (place.getX() >= x + width / 2 ? 1 : 0) + (place.getY() >= y + height / 2 ? 2 : 0);
-            children[i].insert(place);
+            int idx = (place.getX() >= x + width / 2 ? 1 : 0) + (place.getY() >= y + height / 2 ? 2 : 0);
+            children[idx].insert(place);
         } else {
             places.add(place);
             if (places.size() > MAX_CAPACITY) {
@@ -47,27 +44,53 @@ public class QuadtreeNode {
         }
     }
 
-    void search(int searchX, int searchY, int searchWidth, int searchHeight, String serviceType, Set<Place> results) {
-        if (!intersects(searchX, searchY, searchWidth, searchHeight)) {
+    public void search(int x, int y, int width, int height, String serviceType, SimplePlaceSet results) {
+        if (!intersects(x, y, width, height)) {
             return;
         }
         if (isDivided) {
-            for (QuadtreeNode child : children) {
-                child.search(searchX, searchY, searchWidth, searchHeight, serviceType, results);
+            for (int i = 0; i < children.length; i++) {
+                children[i].search(x, y, width, height, serviceType, results);
             }
         } else {
-            for (Place place : places) {
-                if (place.getX() >= searchX && place.getX() <= searchX + searchWidth &&
-                    place.getY() >= searchY && place.getY() <= searchY + searchHeight &&
-                    place.getServices().contains(serviceType)) {
+            for (int i = 0; i < places.size(); i++) {
+                Place place = places.get(i);
+                if (place.getX() >= x && place.getX() <= x + width &&
+                    place.getY() >= y && place.getY() <= y + height &&
+                    place.getService().equals(serviceType)) {
                     results.add(place);
                 }
             }
         }
     }
 
-    boolean intersects(int searchX, int searchY, int searchWidth, int searchHeight) {
-        return !(x + width < searchX || x > searchX + searchWidth ||
-                 y + height < searchY || y > searchY + searchHeight);
+    public boolean edit(Place target, String newService) {
+        if (isDivided) {
+            int idx = (target.getX() >= x + width / 2 ? 1 : 0) + (target.getY() >= y + height / 2 ? 2 : 0);
+            return children[idx].edit(target, newService);
+        } else {
+            for (int i = 0; i < places.size(); i++) {
+                Place place = places.get(i);
+                if (place.equals(target)) {
+                    place.setService(newService);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean remove(Place target) {
+        if (isDivided) {
+            int idx = (target.getX() >= x + width / 2 ? 1 : 0) + (target.getY() >= y + height / 2 ? 2 : 0);
+            return children[idx].remove(target);
+        } else {
+            return places.remove(target);
+        }
+    }
+
+    private boolean intersects(int x, int y, int width, int height) {
+        return !(this.x + this.width < x || this.x > x + width ||
+                 this.y + this.height < y || this.y > y + height);
     }
 }
